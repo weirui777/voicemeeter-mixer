@@ -3,7 +3,7 @@
 给 **Voicemeeter Banana / Pro / Potato** 用的 Windows 托盘混音面板，
 效果类似 Win10 / Win11 自带的「音量合成器」浮出卡片，但调节的是 **Voicemeeter 自己的通道音量**。
 
-Voicemeeter 装好后，拖 Windows 的音量条是调不动它那些通道的——这个小工具就是补上这一块。
+Voicemeeter 装好后，拖 Windows 的音量条是调不动它那些通道的音量，以及虚拟的合成总声道音量。——这个小工具就是补上这一块。
 
 ![混音面板](docs/panel_real.png)
 
