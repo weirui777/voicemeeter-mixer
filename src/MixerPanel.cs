@@ -18,6 +18,7 @@ namespace VMixer
         private readonly List<ChannelLayout> _layout = new List<ChannelLayout>();
 
         private string _statusText = "未连接";
+        private string _statusSuffix = "";  // 跟在状态后面的补充提示（如「· 未运行」）
         private string _tipInfo = "";       // 与托盘气泡同款信息（通道名 + 音量）
         private bool _statusOk = true;
         private bool _transparent = true;
@@ -371,7 +372,6 @@ namespace VMixer
             using (Pen pen = new Pen(th.Separator, 1f))
                 g.DrawLine(pen, card.X + Ui.S(12), fy, card.Right - Ui.S(12), fy);
 
-            Color st = _statusOk ? th.Status : Color.FromArgb(255, 232, 110, 100);
             int left = card.X + Ui.S(16);
             int right = card.Right - Ui.S(16);
             int h = FooterHeight;
@@ -388,12 +388,36 @@ namespace VMixer
                     TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
             }
 
-            // 左边：连接状态
+            // 左边：连接状态。后面可以跟一句补充提示（例如 VM 没起来时的「· 未运行」），
+            // 提示单独用警示色画，主体「已连接 xxx」保持正常颜色，不做成整行报错的样子。
             int leftW = right - left - tipW;
             if (leftW < Ui.S(60)) leftW = right - left;
-            LayeredSurface.DrawTextEllipsis(g, _statusText, _fontStatus, st,
-                new Rectangle(left, fy, leftW, h),
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+
+            int suffixW = 0;
+            if (_statusSuffix.Length > 0)
+                suffixW = (int)g.MeasureString(_statusSuffix, _fontStatus).Width + Ui.S(4);
+
+            int baseW = leftW - suffixW;
+            if (baseW < Ui.S(40)) baseW = leftW;
+            if (_statusText.Length > 0)
+            {
+                LayeredSurface.DrawTextEllipsis(g, _statusText, _fontStatus, th.Status,
+                    new Rectangle(left, fy, baseW, h),
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            }
+
+            if (_statusSuffix.Length > 0)
+            {
+                int sx = left + (int)g.MeasureString(_statusText, _fontStatus).Width + Ui.S(4);
+                int sw = right - sx;
+                if (sw > Ui.S(20))
+                {
+                    Color sc = _statusOk ? th.SubText : Color.FromArgb(255, 232, 110, 100);
+                    LayeredSurface.DrawTextEllipsis(g, _statusSuffix, _fontStatus, sc,
+                        new Rectangle(sx, fy, sw, h),
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+                }
+            }
         }
 
         // ---------------- 交互 ----------------
@@ -724,7 +748,17 @@ namespace VMixer
 
         public void SetStatus(string text, string tipInfo, bool ok)
         {
-            _statusText = text;
+            SetStatus(text, "", tipInfo, ok);
+        }
+
+        /// <summary>
+        /// 设置底部状态栏。suffix 是紧跟在状态文字后面的补充提示（例如「· 未运行」），
+        /// 用单独的警示色画，不会把整行都变成报错的样子。
+        /// </summary>
+        public void SetStatus(string text, string suffix, string tipInfo, bool ok)
+        {
+            _statusText = text == null ? "" : text;
+            _statusSuffix = suffix == null ? "" : suffix;
             _tipInfo = tipInfo == null ? "" : tipInfo;
             _statusOk = ok;
         }

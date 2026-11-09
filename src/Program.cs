@@ -86,7 +86,7 @@ namespace VMixer
         private DateTime _lastConnectTry = DateTime.MinValue;
         private DateTime _panelShownAt = DateTime.MinValue;
         private bool _quitting;
-        private bool _balloonShown;
+        private string _vmName = "";      // 最近一次连上的 Voicemeeter 名字（断开后仍保留）
         private EventWaitHandle _showEvent;
         private volatile bool _showRequested;
 
@@ -511,21 +511,18 @@ namespace VMixer
 
             if (_vm.Connect(_cfg.DllPath))
             {
-                _balloonShown = false;
+                _vmName = _vm.VmShortName;
                 if (_panel != null) _panel.Rebuild(_vm, _cfg);
                 return true;
             }
             else
             {
+                // VM 没起来的时候不再弹气泡提示：状态直接写在面板状态栏里
+                // （「已连接 xxx · 未运行」），不打扰用户。
                 if (interactive)
                 {
                     MessageBox.Show(_vm.LastError, "Voicemeeter 混音器",
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-                else if (!_balloonShown)
-                {
-                    _balloonShown = true;
-                    _tray.ShowBalloonTip(3000, "Voicemeeter 混音器", _vm.LastError, ToolTipIcon.Warning);
                 }
                 return false;
             }
@@ -550,7 +547,8 @@ namespace VMixer
             }
             else if (_panel != null && _panel.Visible)
             {
-                _panel.SetStatus(_vm.LastError, "", false);
+                // VM 没起来时只在状态栏末尾补一句，不弹提示框
+                _panel.SetStatus(StatusText(), "· 未运行", "", false);
             }
 
             // 失焦自动隐藏
@@ -577,12 +575,25 @@ namespace VMixer
             return Program.BuildTipInfo(_vm, _cfg);
         }
 
+        /// <summary>
+        /// 状态栏左边那句连接状态。断开后仍保留上次连上的 VM 名字，
+        /// 这样 VM 没运行的时候显示的是「已连接 Banana · 未运行」，
+        /// 不用另外弹提示框告诉用户。
+        /// </summary>
+        private string StatusText()
+        {
+            if (_vm.Connected) return "已连接 " + _vm.VmShortName;
+            if (_vmName.Length > 0) return "已连接 " + _vmName;
+            return "未连接";
+        }
+
         private void UpdateStatus()
         {
             string tipInfo = BuildTipInfo();
 
-            string text = "已连接 " + _vm.VmShortName;
-            if (_panel != null) _panel.SetStatus(text, tipInfo, true);
+            if (_vm.Connected) _vmName = _vm.VmShortName;
+            string text = StatusText();
+            if (_panel != null) _panel.SetStatus(text, "", tipInfo, true);
 
             // 托盘气泡：和面板状态栏右边显示完全一致的内容
             string tip = tipInfo.Length > 0
@@ -854,17 +865,22 @@ namespace VMixer
             {
                 AttachConsole(-1);
                 // 可选的第二个参数：指定第几条通道处于「悬停」状态（调试用）
+                // 可选的第三个参数：off = 模拟「VM 没运行」时的状态栏
                 int hover = -1;
+                bool offline = false;
                 for (int i = 0; i < args.Length - 1; i++)
                 {
                     if (args[i] == renderPath)
                     {
                         int h;
                         if (int.TryParse(args[i + 1], out h)) hover = h;
+                        if (i + 2 < args.Length &&
+                            string.Equals(args[i + 2], "off", StringComparison.OrdinalIgnoreCase))
+                            offline = true;
                         break;
                     }
                 }
-                RunRenderDump(renderPath, hover);
+                RunRenderDump(renderPath, hover, offline);
                 return;
             }
 
@@ -894,10 +910,10 @@ namespace VMixer
         /// <summary>把面板离屏渲染成 PNG（调试用）。</summary>
         private static void RunRenderDump(string outPath)
         {
-            RunRenderDump(outPath, -1);
+            RunRenderDump(outPath, -1, false);
         }
 
-        private static void RunRenderDump(string outPath, int hoverIndex)
+        private static void RunRenderDump(string outPath, int hoverIndex, bool offline)
         {
             Theme.Refresh();
             VmApi vm = new VmApi();
@@ -911,7 +927,15 @@ namespace VMixer
             MixerPanel panel = new MixerPanel(vm, cfg);
             panel.Rebuild(vm, cfg);
             panel.PositionNearTray();
-            panel.SetStatus("已连接 " + vm.VmShortName, BuildTipInfo(vm, cfg), true);
+            if (offline)
+            {
+                // 模拟 VM 没运行：状态栏在「已连接 xxx」后面补一句「· 未运行」
+                panel.SetStatus("已连接 " + vm.VmShortName, "· 未运行", "", false);
+            }
+            else
+            {
+                panel.SetStatus("已连接 " + vm.VmShortName, BuildTipInfo(vm, cfg), true);
+            }
             if (hoverIndex >= 0) panel.SetHoverIndex(hoverIndex);
             Console.WriteLine(panel.DescribeLayout());
             for (int i = 0; i < panel.ChannelCount; i++)
