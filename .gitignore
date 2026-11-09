@@ -1,0 +1,27 @@
+﻿# 构建产物 / 打包输出
+dist/
+release/
+*.zip
+*.exe
+
+# 工具脚本的运行产物
+tools/*.png
+tools/*.jpg
+tools/*.log
+tools/*.txt
+tools/*.zip
+tools/texttest/*.exe
+
+# 运行时配置与日志（在本机 %APPDATA%\VMixer 下，仓库里不需要）
+config.ini
+*.ini
+
+# 编辑器 / 系统
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+Thumbs.db
+desktop.ini
+.DS_Store
