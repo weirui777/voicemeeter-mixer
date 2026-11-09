@@ -22,6 +22,8 @@ Voicemeeter 装好后，拖 Windows 的音量条是调不动它那些通道的�
 - **接管系统音量键**（可选）、`Ctrl + Alt + V` 呼出面板、可选开机自启
 - **单实例运行**，重复启动只会把已有的面板唤出来
 
+![托盘右键菜单](docs/tray_menu.png)
+
 ![悬停提示](docs/panel_hover.png)
 
 ![托盘气泡](docs/tray_tooltip.png)
